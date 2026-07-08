@@ -1,0 +1,9 @@
+threat_signatures:
+  sqli: "(?i)(union.*select|select.*from|insert.*into|drop\\s+table)"
+  xss: "(?i)(<script>|javascript:|onerror=)"
+  lfi: "(?i)(\\.\\./\\.\\./|/etc/passwd|/windows/win\\.ini)"
+  bad_user_agents: "(?i)(sqlmap|nmap|nikto|masscan|zgrab)"
+  bad_paths:
+    - ".env"
+    - ".git"
+    - "config.json"

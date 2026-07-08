@@ -2,34 +2,34 @@ package detector
 
 import (
 	"net/http"
-	"regexp"
 	"strings"
-)
 
-var (
-	sqliRegex  = regexp.MustCompile(`(?i)(union.*select|select.*from|insert.*into|drop\s+table)`)
-	xssRegex   = regexp.MustCompile(`(?i)(<script>|javascript:|onerror=)`)
-	lfiRegex   = regexp.MustCompile(`(?i)(\.\./\.\./|/etc/passwd|/windows/win\.ini)`)
-	badUARegex = regexp.MustCompile(`(?i)(sqlmap|nmap|nikto|masscan|zgrab)`)
+	"lethe/internal/config"
 )
 
 func IsMalicious(r *http.Request) bool {
-	userAgent := r.UserAgent()
-	if badUARegex.MatchString(userAgent) {
+	rules := config.GetRules()
+	if rules == nil {
+		return false
+	}
+
+	if rules.BadUAs.MatchString(r.UserAgent()) {
 		return true
 	}
 
 	path := r.URL.Path
-	if strings.HasSuffix(path, ".env") || strings.HasSuffix(path, ".git") || strings.HasSuffix(path, "config.json") {
-		return true
+	for _, badPath := range rules.BadPaths {
+		if strings.HasSuffix(path, badPath) {
+			return true
+		}
 	}
 
-	if lfiRegex.MatchString(path) || sqliRegex.MatchString(path) || xssRegex.MatchString(path) {
+	if rules.LFI.MatchString(path) || rules.SQLi.MatchString(path) || rules.XSS.MatchString(path) {
 		return true
 	}
 
 	query := r.URL.RawQuery
-	if sqliRegex.MatchString(query) || xssRegex.MatchString(query) || lfiRegex.MatchString(query) {
+	if rules.SQLi.MatchString(query) || rules.XSS.MatchString(query) || rules.LFI.MatchString(query) {
 		return true
 	}
 
