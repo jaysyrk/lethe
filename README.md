@@ -55,3 +55,13 @@ curl -v "http://localhost:8080/search?q=UNION+SELECT+*+FROM+users"
 ```bash
 curl -v -X POST -H "User-Agent: sqlmap" http://localhost:8080/
 ```
+
+## Automated Testing
+
+Lethe includes a comprehensive suite of automated tests for its core internal packages (Config, Detector, Deception, Jail, Logger, Metrics, and Proxy).
+
+To run the entire test suite, execute the following command from the root of the project:
+```bash
+go test -v ./...
+```
+*(Note: Some deception tests such as the tarpit simulate intentional delays, so the test suite may take up to 40 seconds to finish.)*
