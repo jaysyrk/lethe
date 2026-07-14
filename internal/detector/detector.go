@@ -1,6 +1,8 @@
 package detector
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"strings"
 
@@ -28,9 +30,33 @@ func IsMalicious(r *http.Request) bool {
 		return true
 	}
 
-	query := r.URL.RawQuery
-	if rules.SQLi.MatchString(query) || rules.XSS.MatchString(query) || rules.LFI.MatchString(query) {
-		return true
+	for _, values := range r.URL.Query() {
+		for _, v := range values {
+			if rules.SQLi.MatchString(v) || rules.XSS.MatchString(v) || rules.LFI.MatchString(v) {
+				return true
+			}
+		}
+	}
+
+	for key, values := range r.Header {
+		for _, v := range values {
+			if rules.SQLi.MatchString(v) || rules.XSS.MatchString(v) || rules.LFI.MatchString(v) {
+				_ = key
+				return true
+			}
+		}
+	}
+
+	if r.Body != nil {
+		bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 8192))
+		if err == nil && len(bodyBytes) > 0 {
+			r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(bodyBytes), r.Body))
+			
+			bodyStr := string(bodyBytes)
+			if rules.SQLi.MatchString(bodyStr) || rules.XSS.MatchString(bodyStr) || rules.LFI.MatchString(bodyStr) {
+				return true
+			}
+		}
 	}
 
 	return false

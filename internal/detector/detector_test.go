@@ -4,6 +4,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"lethe/internal/config"
@@ -88,6 +89,13 @@ func TestIsMalicious(t *testing.T) {
 			userAgent: "Mozilla/5.0",
 			expected:  true,
 		},
+		{
+			name:      "URL-Encoded SQLi in Query",
+			method:    "GET",
+			url:       "/search?q=%55%4e%49%4f%4e%20%53%45%4c%45%43%54",
+			userAgent: "Mozilla/5.0",
+			expected:  true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -100,6 +108,37 @@ func TestIsMalicious(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIsMalicious_Body(t *testing.T) {
+	setupTestConfig(t)
+
+
+	reqClean := httptest.NewRequest("POST", "/submit", strings.NewReader(`{"name": "john"}`))
+	reqClean.Header.Set("User-Agent", "Mozilla/5.0")
+	if IsMalicious(reqClean) {
+		t.Errorf("Expected clean body to be false")
+	}
+
+
+	reqMalicious := httptest.NewRequest("POST", "/submit", strings.NewReader(`{"name": "UNION SELECT * FROM users"}`))
+	reqMalicious.Header.Set("User-Agent", "Mozilla/5.0")
+	if !IsMalicious(reqMalicious) {
+		t.Errorf("Expected malicious body to be true")
+	}
+}
+
+func TestIsMalicious_Headers(t *testing.T) {
+	setupTestConfig(t)
+
+	req := httptest.NewRequest("GET", "/home", nil)
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("Cookie", "sessionid=../../etc/passwd")
+
+	if !IsMalicious(req) {
+		t.Errorf("Expected malicious cookie to be flagged")
+	}
+
 }
 
 func TestIsMalicious_NoRulesLoaded(t *testing.T) {
